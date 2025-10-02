@@ -25,10 +25,34 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    # 受け取ったメッセージをそのまま返す
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=event.message.text))
+    # 受け取ったメッセージをそのまま返す(削除)
+   # line_bot_api.reply_message(
+    #    event.reply_token,
+    #    TextSendMessage(text=event.message.text))
+
+    # 受け取ったメッセージを小文字でチェック
+    user_text = event.message.text.lower()
+    user_id = event.source.user_id # 誰が送ったか
+
+    # 1.ごはん
+    if "ごはん" in user_text or "ご飯" in user_text or "エサ" in user_text or "餌" in user_text:
+        # TODO: Google Sheetsにメモする処理を追加
+        # save_to_database(user_id, '給餌', datatime.now())
+
+        response_text = f"{user_id}、ごはんありがとう！メモしたにゃ"
+
+    elif "トイレ" in user_text or "うんち" in user_text or "おしっこ" in user_text:
+        # TODO: Google Sheetsにメモする処理を追加
+        # save_to_database(user_id, '排泄', datatime.now())
+        response_text = f"{user_id}、トイレ掃除ありがとう！メモしたにゃ"
+    
+    else:
+        reply_message = "よくわからないにゃ。「ごはん」「エサ」や「トイレ」「うんち」とかならわかるにゃ"
+
+        # 返信メッセージを送信
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=reply_message))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
