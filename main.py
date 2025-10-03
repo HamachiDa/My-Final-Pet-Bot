@@ -240,7 +240,7 @@ def handle_message(event):
                 last_user_name = latest_log['user_id'] 
 
             response_text = (
-                f"最新のトイレ掃除は、{last_user_name} が\n"
+                f"最新のトイレ掃除は、\n{last_user_name} が\n"
                 f"{latest_log['timestamp']} に\n"
                 f"やってくれたにゃん！" # トイレ掃除に固定
             )
@@ -273,6 +273,9 @@ def handle_message(event):
         response_text = "みさき！\nいつもありがとうにゃん！\nいっぱい毛を落としてごめんにゃ～"
     elif "まさと" in user_text or "まーくん" in user_text or "大翔" in user_text:
         response_text = "まさと！\nいつもありがとうにゃん！\nでも大声は怖いにゃん～"
+
+    elif "にゃ" in user_text or "にゃー" in user_text:
+        response_text = "にゃーん！"
     
     # 応答メッセージを送信
     try:
