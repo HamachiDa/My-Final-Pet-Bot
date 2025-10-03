@@ -27,12 +27,11 @@ try:
     gc = gspread.service_account_from_dict(credentials_dict)
     
     # 2. Renderに登録したシートIDを取得
-    sheet_id = os.environ.get('GOOGLE_SHEETS_ID') # <-- URLからIDに変更
+    sheet_id = os.environ.get('GOOGLE_SHEETS_ID') 
     if not sheet_id:
         raise ValueError("GOOGLE_SHEETS_ID environment variable not found.")
     
     # 3. IDを使ってスプレッドシートを開き、最初のシート（インデックス0）を取得
-    # これがシート名「シート1」に確実に対応する
     spreadsheet = gc.open_by_key(sheet_id) 
     WORKSHEET = spreadsheet.get_worksheet(0) 
     
@@ -43,13 +42,20 @@ except Exception as e:
     print(f"致命的エラー: Google Sheets認証または接続に失敗しました: {e}")
     WORKSHEET = None 
 
-# データの記録関数 (変更なし)
+# データの記録関数 (最終修正)
 def save_to_sheet(user_id, action_type):
+    global WORKSHEET
     if WORKSHEET is None:
         print("シート接続が確立されていないため、記録できません。")
         return False
 
     try:
+        # WORKSHEETが古くなっている可能性があるため、シートを再取得し直す
+        # これにより、権限が「編集者」であっても書き込みエラーを防ぐ
+        sheet_id = os.environ.get('GOOGLE_SHEETS_ID')
+        gc = gspread.service_account_from_dict(json.loads(os.environ.get('GSPREAD_AUTH_JSON')))
+        WORKSHEET = gc.open_by_key(sheet_id).get_worksheet(0)
+        
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S JST')
         WORKSHEET.append_row([timestamp, user_id, action_type])
         return True
@@ -58,7 +64,7 @@ def save_to_sheet(user_id, action_type):
         return False
 
 
-# ... (@app.route, @handler.add の関数は省略。変更はありません) ...
+# ... @app.route("/callback", methods=['POST']) と @handler.add(MessageEvent, message=TextMessage) の関数は省略 ...
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -84,12 +90,10 @@ def handle_message(event):
     # 1.ごはんキーワードのチェックと記録
     if "ごはん" in user_text or "ご飯" in user_text or "エサ" in user_text or "餌" in user_text:
         record_success = save_to_sheet(user_id, '給餌')
-        # エラーログが出ないため、記録失敗時にBOTから通知するように変更
         if record_success:
             response_text = f"ごはんありがとう！({user_id} の行動として)メモしたにゃ"
         else:
-            # 接続は成功とBOTは誤認するため、汎用的な失敗メッセージとする
-            response_text = "ごめん！記録に失敗したにゃ。😭 シートのIDや権限を確認してね。" 
+            response_text = "ごめん！記録に失敗したにゃ。😭 シートの権限やIDを最終確認してね。" 
 
     # 2.トイレキーワードのチェックと記録
     elif "トイレ" in user_text or "うんち" in user_text or "おしっこ" in user_text:
@@ -97,7 +101,7 @@ def handle_message(event):
         if record_success:
             response_text = f"トイレ掃除ありがとう！({user_id} の行動として)メモしたにゃ"
         else:
-            response_text = "ごめん！記録に失敗したにゃ。😭 シートのIDや権限を確認してね。" 
+            response_text = "ごめん！記録に失敗したにゃ。😭 シートの権限やIDを最終確認してね。" 
     
     # 応答メッセージを送信
     try:
