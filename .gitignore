@@ -1,0 +1,20 @@
+# --- 1. 機密情報の除外 (最重要セキュリティ対策) ---
+# ダウンロードした認証キーJSONファイルなど、すべてのJSONファイルをGitの追跡から外す
+*.json 
+
+# Renderの環境変数に登録されるキーファイルをローカルで誤って作成した場合の対策
+.env
+.flaskenv
+
+# --- 2. Python環境とキャッシュの除外 ---
+# Pythonの仮想環境フォルダ (venv, .venv) を除外
+venv/
+.venv/
+
+# Pythonが生成する一時ファイルやキャッシュ
+__pycache__/
+*.pyc
+
+# IDE（VSCodeなど）やOSが生成するファイル
+.vscode/
+.DS_Store
