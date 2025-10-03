@@ -4,7 +4,7 @@ from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
-from datetime import datetime
+from datetime import datetime, timezone, timedelta # 【修正点】タイムゾーン対応を追加
 import psycopg2 
 from psycopg2.extras import DictCursor 
 
@@ -30,6 +30,7 @@ def initialize_database():
         CONN = psycopg2.connect(DB_URL)
         cursor = CONN.cursor()
         
+        # テーブルが存在しなければ作成するSQLコマンド
         create_table_query = """
         CREATE TABLE IF NOT EXISTS pet_logs (
             id SERIAL PRIMARY KEY,
@@ -59,7 +60,8 @@ def save_to_db(user_id, action_type):
 
     try:
         cursor = CONN.cursor()
-        timestamp = datetime.now()
+        # 【記録時】タイムゾーンのない現在時刻（サーバー時刻）を記録
+        timestamp = datetime.now() 
         
         insert_query = """
         INSERT INTO pet_logs (timestamp, user_id, action_type)
@@ -113,7 +115,7 @@ def delete_latest_log(user_id):
         print(f"データベース削除エラーが発生しました: {e}")
         return -1 
 
-# データの照会関数 (変更なし)
+# データの照会関数 (修正あり)
 def get_latest_log():
     """最新のペットの世話記録をデータベースから取得する"""
     if CONN is None:
@@ -132,8 +134,12 @@ def get_latest_log():
         cursor.close()
         
         if latest_log:
+            # 【修正点】UTC時刻をJSTに変換 (UTC+9時間)
+            utc_time = latest_log['timestamp'].replace(tzinfo=timezone.utc)
+            jst_time = utc_time.astimezone(timezone(timedelta(hours=9)))
+            
             return {
-                'timestamp': latest_log['timestamp'].strftime('%Y/%m/%d %H時%M分'),
+                'timestamp': jst_time.strftime('%Y/%m/%d %H時%M分'), # JSTで表示
                 'user_id': latest_log['user_id'],
                 'action_type': latest_log['action_type']
             }
@@ -141,6 +147,7 @@ def get_latest_log():
     except Exception as e:
         print(f"データベース照会エラーが発生しました: {e}")
         return None
+
 
 # 【新規追加】アクションタイプを会話文に変換する辞書
 ACTION_MAP = {
@@ -200,7 +207,6 @@ def handle_message(event):
             except Exception:
                 last_user_name = latest_log['user_id'] 
 
-            # 【修正点】アクションタイプを変換して表示
             action_display_name = ACTION_MAP.get(latest_log['action_type'], '不明なお世話')
 
             response_text = (
@@ -240,9 +246,9 @@ def handle_message(event):
                 last_user_name = latest_log['user_id'] 
 
             response_text = (
-                f"最新のトイレ掃除は、\n{last_user_name} が\n"
+                f"最新のトイレ掃除は、{last_user_name} が\n"
                 f"{latest_log['timestamp']} に\n"
-                f"やってくれたにゃん！" # トイレ掃除に固定
+                f"やってくれたにゃん！" 
             )
         else:
             response_text = "まだ誰もトイレ掃除をしてくれてないにゃ... トイレ掃除してくれたら「トイレ」って送ってほしいにゃん。"
@@ -273,9 +279,6 @@ def handle_message(event):
         response_text = "みさき！\nいつもありがとうにゃん！\nいっぱい毛を落としてごめんにゃ～"
     elif "まさと" in user_text or "まーくん" in user_text or "大翔" in user_text:
         response_text = "まさと！\nいつもありがとうにゃん！\nでも大声は怖いにゃん～"
-
-    elif "にゃ" in user_text or "にゃー" in user_text:
-        response_text = "にゃーん！"
     
     # 応答メッセージを送信
     try:
