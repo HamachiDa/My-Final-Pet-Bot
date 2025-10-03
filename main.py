@@ -5,7 +5,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from datetime import datetime
-import gspread # Google Sheets連携ライブラリをインポート
+import gspread 
 
 # Flaskアプリの初期化
 app = Flask(__name__)
@@ -18,47 +18,47 @@ handler = WebhookHandler(os.environ.get('CHANNEL_SECRET'))
 # --- Google Sheets認証と接続処理 ---
 WORKSHEET = None
 try:
-    # 1. Renderに登録したJSON文字列（認証キー）を取得
+    # 1. JSON文字列（認証キー）を取得し、認証
     json_auth = os.environ.get('GSPREAD_AUTH_JSON')
     if not json_auth:
         raise ValueError("GSPREAD_AUTH_JSON environment variable not found.")
         
-    # 2. JSON文字列をPythonの辞書に変換
     credentials_dict = json.loads(json_auth)
-    
-    # 3. サービスアカウント認証
     gc = gspread.service_account_from_dict(credentials_dict)
     
-    # 4. Renderに登録したシートURLを取得
-    sheet_url = os.environ.get('GOOGLE_SHEETS_URL')
-    if not sheet_url:
-        raise ValueError("GOOGLE_SHEETS_URL environment variable not found.")
+    # 2. Renderに登録したシートIDを取得
+    sheet_id = os.environ.get('GOOGLE_SHEETS_ID') # <-- URLからIDに変更
+    if not sheet_id:
+        raise ValueError("GOOGLE_SHEETS_ID environment variable not found.")
     
-    # 5. スプレッドシートを開き、最初のシート（sheet1）を取得
-    WORKSHEET = gc.open_by_url(sheet_url).sheet1
+    # 3. IDを使ってスプレッドシートを開き、最初のシート（インデックス0）を取得
+    # これがシート名「シート1」に確実に対応する
+    spreadsheet = gc.open_by_key(sheet_id) 
+    WORKSHEET = spreadsheet.get_worksheet(0) 
+    
     print("Google Sheets接続成功。")
 
 except Exception as e:
-    # 認証や接続が失敗した場合、BOTは起動するが、Sheetsへの記録は行わない
+    # 接続失敗時もBOTは起動し、失敗メッセージを返す
     print(f"致命的エラー: Google Sheets認証または接続に失敗しました: {e}")
     WORKSHEET = None 
 
-# データの記録関数
+# データの記録関数 (変更なし)
 def save_to_sheet(user_id, action_type):
     if WORKSHEET is None:
         print("シート接続が確立されていないため、記録できません。")
         return False
 
     try:
-        # タイムスタンプを日本時間（JST）に合わせて取得
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S JST')
-        # シートの末尾に新しい行を追加
         WORKSHEET.append_row([timestamp, user_id, action_type])
         return True
     except Exception as e:
         print(f"Google Sheetsへの書き込みエラーが発生しました: {e}")
         return False
 
+
+# ... (@app.route, @handler.add の関数は省略。変更はありません) ...
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -84,10 +84,12 @@ def handle_message(event):
     # 1.ごはんキーワードのチェックと記録
     if "ごはん" in user_text or "ご飯" in user_text or "エサ" in user_text or "餌" in user_text:
         record_success = save_to_sheet(user_id, '給餌')
+        # エラーログが出ないため、記録失敗時にBOTから通知するように変更
         if record_success:
             response_text = f"ごはんありがとう！({user_id} の行動として)メモしたにゃ"
         else:
-            response_text = "ごめん！ごはんは認識できたけど、メモに失敗したにゃ。Renderのログを確認してね。"
+            # 接続は成功とBOTは誤認するため、汎用的な失敗メッセージとする
+            response_text = "ごめん！記録に失敗したにゃ。😭 シートのIDや権限を確認してね。" 
 
     # 2.トイレキーワードのチェックと記録
     elif "トイレ" in user_text or "うんち" in user_text or "おしっこ" in user_text:
@@ -95,7 +97,7 @@ def handle_message(event):
         if record_success:
             response_text = f"トイレ掃除ありがとう！({user_id} の行動として)メモしたにゃ"
         else:
-            response_text = "ごめん！トイレ掃除は認識できたけど、メモに失敗したにゃ。Renderのログを確認してね。"
+            response_text = "ごめん！記録に失敗したにゃ。😭 シートのIDや権限を確認してね。" 
     
     # 応答メッセージを送信
     try:
