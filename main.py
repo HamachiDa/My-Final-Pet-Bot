@@ -30,7 +30,6 @@ def initialize_database():
         CONN = psycopg2.connect(DB_URL)
         cursor = CONN.cursor()
         
-        # テーブルが存在しなければ作成するSQLコマンド
         create_table_query = """
         CREATE TABLE IF NOT EXISTS pet_logs (
             id SERIAL PRIMARY KEY,
@@ -75,7 +74,7 @@ def save_to_db(user_id, action_type):
         print(f"データベースへの書き込みエラーが発生しました: {e}")
         return False
 
-# データの削除関数 (統合済み)
+# データの削除関数 (変更なし)
 def delete_latest_log(user_id):
     """特定のユーザーが記録した最新のログを削除する"""
     if CONN is None:
@@ -85,7 +84,6 @@ def delete_latest_log(user_id):
     try:
         cursor = CONN.cursor()
         
-        # 1. 削除対象のレコードIDを特定 (指定ユーザーの最新記録)
         select_id_query = """
         SELECT id FROM pet_logs 
         WHERE user_id = %s 
@@ -97,11 +95,10 @@ def delete_latest_log(user_id):
         
         if result is None:
             cursor.close()
-            return 0 # 削除対象なし
+            return 0 
 
         log_id_to_delete = result[0]
         
-        # 2. 最新のレコードを削除
         delete_query = """
         DELETE FROM pet_logs 
         WHERE id = %s;
@@ -110,11 +107,11 @@ def delete_latest_log(user_id):
         CONN.commit()
         cursor.close()
         print(f"DB記録削除成功: ID {log_id_to_delete} by {user_id}")
-        return 1 # 削除成功
+        return 1 
         
     except Exception as e:
         print(f"データベース削除エラーが発生しました: {e}")
-        return -1 # 削除失敗
+        return -1 
 
 # データの照会関数 (変更なし)
 def get_latest_log():
@@ -144,6 +141,12 @@ def get_latest_log():
     except Exception as e:
         print(f"データベース照会エラーが発生しました: {e}")
         return None
+
+# 【新規追加】アクションタイプを会話文に変換する辞書
+ACTION_MAP = {
+    '給餌': 'ごはん',
+    '排泄': 'トイレ掃除'
+}
 
 
 @app.route("/callback", methods=['POST'])
@@ -197,9 +200,12 @@ def handle_message(event):
             except Exception:
                 last_user_name = latest_log['user_id'] 
 
+            # 【修正点】アクションタイプを変換して表示
+            action_display_name = ACTION_MAP.get(latest_log['action_type'], '不明なお世話')
+
             response_text = (
                 f"最新のお世話は、{last_user_name} が\n"
-                f"{latest_log['action_type']} を {latest_log['timestamp']} に\n"
+                f"{action_display_name} を {latest_log['timestamp']} に\n"
                 f"やってくれたにゃん！"
             )
         else:
@@ -234,9 +240,9 @@ def handle_message(event):
                 last_user_name = latest_log['user_id'] 
 
             response_text = (
-                f"最新のトイレは、{last_user_name} が\n"
+                f"最新のトイレ掃除は、{last_user_name} が\n"
                 f"{latest_log['timestamp']} に\n"
-                f"掃除してくれたにゃん！"
+                f"やってくれたにゃん！" # トイレ掃除に固定
             )
         else:
             response_text = "まだ誰もトイレ掃除をしてくれてないにゃ... トイレ掃除してくれたら「トイレ」って送ってほしいにゃん。"
