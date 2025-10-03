@@ -30,6 +30,7 @@ def initialize_database():
         CONN = psycopg2.connect(DB_URL)
         cursor = CONN.cursor()
         
+        # テーブルが存在しなければ作成するSQLコマンド
         create_table_query = """
         CREATE TABLE IF NOT EXISTS pet_logs (
             id SERIAL PRIMARY KEY,
@@ -74,7 +75,7 @@ def save_to_db(user_id, action_type):
         print(f"データベースへの書き込みエラーが発生しました: {e}")
         return False
 
-# データの削除関数 (新規追加)
+# データの削除関数 (統合済み)
 def delete_latest_log(user_id):
     """特定のユーザーが記録した最新のログを削除する"""
     if CONN is None:
