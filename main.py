@@ -21,6 +21,7 @@ DB_URL = os.environ.get('DATABASE_URL') # Renderが自動で生成したURL
 def initialize_database():
     """データベース接続を試行し、テーブルが存在しなければ作成する"""
     global CONN
+    # DATABASE_URLのチェック
     if not DB_URL:
         print("致命的エラー: DATABASE_URLが環境変数に設定されていません。")
         return False
@@ -31,7 +32,6 @@ def initialize_database():
         cursor = CONN.cursor()
         
         # テーブルが存在しなければ作成するSQLコマンド
-        # (BOTの将来的な展開を見据え、NULLを許可しない形で設計します)
         create_table_query = """
         CREATE TABLE IF NOT EXISTS pet_logs (
             id SERIAL PRIMARY KEY,
@@ -96,7 +96,16 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_text = event.message.text.lower()
-    user_id = event.source.user_id 
+    user_id = event.source.user_id
+    
+    # 【ユーザー名取得ロジック】
+    user_name = "あなた" # 名前が取得できなかった場合のデフォルト名
+    try:
+        profile = line_bot_api.get_profile(user_id)
+        user_name = profile.display_name
+    except Exception as e:
+        print(f"ユーザー名の取得に失敗しました: {e}") 
+        
     response_text = "よくわからないにゃ。「ごはん」「エサ」や「トイレ」「うんち」とかならわかるにゃ"
     
     record_success = False
@@ -105,7 +114,8 @@ def handle_message(event):
     if "ごはん" in user_text or "ご飯" in user_text or "エサ" in user_text or "餌" in user_text:
         record_success = save_to_db(user_id, '給餌')
         if record_success:
-            response_text = f"ごはんありがとう！({user_id} の行動として)メモしたにゃ"
+            # 【ユーザー名での応答】
+            response_text = f"ごはんありがとう！({user_name} の行動として)メモしたにゃ"
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
@@ -113,7 +123,8 @@ def handle_message(event):
     elif "トイレ" in user_text or "うんち" in user_text or "おしっこ" in user_text:
         record_success = save_to_db(user_id, '排泄')
         if record_success:
-            response_text = f"トイレ掃除ありがとう！({user_id} の行動として)メモしたにゃ"
+            # 【ユーザー名での応答】
+            response_text = f"トイレ掃除ありがとう！({user_name} の行動として)メモしたにゃ"
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。" 
     
