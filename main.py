@@ -327,6 +327,7 @@ def handle_message(event):
         response_text = "呼んだかにゃ？"
 
     elif "にゃん" in user_text or "にゃー" in user_text or "にゃあ" in user_text or "にゃーん" in user_text:
+        response_text = "にゃ"
         
 
     # 応答メッセージを送信
