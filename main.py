@@ -176,8 +176,9 @@ def get_latest_log_by_type(action_type):
 
 ACTION_MAP = {
     '給餌': 'ごはん',
-    '排泄': 'トイレ掃除',
-    '水分補給': 'お水交換' # 追加
+    '排便': 'うんち掃除',
+    '排尿': 'おしっこ掃除',
+    '水分補給': 'お水交換' 
 }
 
 
@@ -208,7 +209,7 @@ def handle_message(event):
         print(f"ユーザー名の取得に失敗しました: {e}")
 
     # 失敗時
-    response_text = "よくわからないにゃ。\n「ごはん」「トイレ」「お水」とかならわかるにゃ。\n最新の記録は「最新」って聞いてにゃん！"
+    response_text = "よくわからないにゃ。\n「ごはん」「うんち」「おしっこ」「お水」とかならわかるにゃ。\n最新の記録は「最新」って聞いてにゃん！"
     record_success = False
 
     # 記録削除キーワードのチェック
@@ -257,9 +258,9 @@ def handle_message(event):
         else:
             response_text = "まだ誰もごはんをくれてないにゃ... ご飯くれたら「ごはん」って送ってほしいにゃん。"
 
-    # トイレの照会 (get_latest_log_by_type を使用)
-    elif "トイレした？" in user_text or "うんちした？" in user_text or "おしっこした？" in user_text:
-        latest_toilet_log = get_latest_log_by_type('排泄') # 修正
+    # 排便の照会
+    elif "うんちした？" in user_text or "排便した？" in user_text:
+        latest_toilet_log = get_latest_log_by_type('排便') 
         if latest_toilet_log:
             try:
                 profile = line_bot_api.get_profile(latest_toilet_log['user_id'])
@@ -267,14 +268,32 @@ def handle_message(event):
             except Exception:
                 last_user_name = "誰かさん"
             response_text = (
-                f"最新のトイレ掃除は、{last_user_name} が\n"
+                f"最新のうんち掃除は、{last_user_name} が\n"
                 f"{latest_toilet_log['timestamp']} に\n"
                 f"やってくれたにゃん！"
             )
         else:
             response_text = "まだ誰もトイレ掃除をしてくれてないにゃ... トイレ掃除してくれたら「トイレ」って送ってほしいにゃん。"
 
-    # 【新規追加】お水の照会
+    # 排尿の照会
+    elif "おしっこした？" in user_text or "排尿した？" in user_text:
+        latest_toilet_log = get_latest_log_by_type('排尿') 
+        if latest_toilet_log:
+            try:
+                profile = line_bot_api.get_profile(latest_toilet_log['user_id'])
+                last_user_name = profile.display_name
+            except Exception:
+                last_user_name = "誰かさん"
+            response_text = (
+                f"最新のおしっこ掃除は、{last_user_name} が\n"
+                f"{latest_toilet_log['timestamp']} に\n"
+                f"やってくれたにゃん！"
+            )
+        else:
+            response_text = "まだ誰もトイレ掃除をしてくれてないにゃ... トイレ掃除してくれたら「トイレ」って送ってほしいにゃん。"
+
+
+    # お水の照会
     elif "水飲んだ？" in user_text or "お水は？" in user_text:
         latest_water_log = get_latest_log_by_type('水分補給')
         if latest_water_log:
@@ -299,10 +318,17 @@ def handle_message(event):
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
-    elif "トイレ" in user_text or "うんち" in user_text or "おしっこ" in user_text:
-        record_success = save_to_db(user_id, '排泄')
+    elif "便" in user_text or "うんち" in user_text or "うんこ" in user_text or "うんち掃除" in user_text:
+        record_success = save_to_db(user_id, '排便')
         if record_success:
-            response_text = f"トイレ掃除ありがとう！{user_name}\n メモしたにゃ。\n臭くてごめんにゃ～"
+            response_text = f"トイレ掃除ありがとう！{user_name}\nおしっこも取ってくれたらそれも「おしっこ」で教えてにゃ\n臭くてごめんにゃ～"
+        else:
+            response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
+
+    elif "尿" in user_text or "おしっこ" in user_text or "おしっこ掃除" in user_text:
+        record_success = save_to_db(user_id, '排尿')
+        if record_success:
+            response_text = f"トイレ掃除ありがとう！{user_name}\nうんちも取ってくれたらそれも「うんち」で教えてにゃ\n臭くてごめんにゃ～"
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
