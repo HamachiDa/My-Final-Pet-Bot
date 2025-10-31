@@ -17,19 +17,32 @@ handler = WebhookHandler(os.environ.get('CHANNEL_SECRET'))
 
 # --- データベース接続とテーブル作成 ---
 CONN = None
-DB_URL = os.environ.get('DATABASE_URL')
 
 def initialize_database():
     """データベース接続を試行し、テーブルが存在しなければ作成する"""
     global CONN
-    if not DB_URL:
-        print("致命的エラー: DATABASE_URLが環境変数に設定されていません。")
-        return False
 
+    # 新しいチェック：必要な環境変数がすべて揃っているか確認
+    required_vars = ['PGHOST', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGPORT']
+    if not all(os.environ.get(v) for v in required_vars):
+        print("致命的エラー: データベース接続に必要なPG_*変数が環境変数に設定されていません。")
+        # どの変数が不足しているかログ出力（デバッグ用）
+        missing_vars = [v for v in required_vars if not os.environ.get(v)]
+        print(f"不足している環境変数: {missing_vars}")
+        return False
+        
     try:
-        CONN = psycopg2.connect(DB_URL)
+        # 個別の環境変数を使って接続 (PGHOSTADDR, PGSSLMODE, PGSSLROOTCERTはpsycopg2が自動で利用)
+        CONN = psycopg2.connect(
+            host=os.environ.get('PGHOST'),
+            user=os.environ.get('PGUSER'),
+            password=os.environ.get('PGPASSWORD'),
+            dbname=os.environ.get('PGDATABASE'),
+            port=os.environ.get('PGPORT')
+        )
         cursor = CONN.cursor()
 
+        # テーブル作成クエリ (既存のpet_logsテーブルを作成または確認)
         create_table_query = """
         CREATE TABLE IF NOT EXISTS pet_logs (
             id SERIAL PRIMARY KEY,
@@ -44,13 +57,14 @@ def initialize_database():
         print("PostgreSQL接続成功 & テーブル作成完了。")
         return True
     except Exception as e:
+        # 接続エラーは、ここで出力される (例: パスワード誤り、IPv6到達不能など)
         print(f"致命的エラー: データベース初期化に失敗しました: {e}")
         CONN = None
         return False
 
 initialize_database()
 
-# データの記録関数
+# データの記録関数 (変更なし)
 def save_to_db(user_id, action_type):
     """データをデータベースに書き込む"""
     if CONN is None:
