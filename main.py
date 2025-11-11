@@ -7,6 +7,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from datetime import datetime, timezone, timedelta
 import psycopg2
 from psycopg2.extras import DictCursor
+import sys # 🚨 新規追加: エラー時にプロセスを終了させるため
 
 # Flaskアプリの初期化
 app = Flask(__name__)
@@ -22,18 +23,16 @@ def initialize_database():
     """データベース接続を試行し、テーブルが存在しなければ作成する"""
     global CONN
 
-    # 新しいチェック：必要な環境変数がすべて揃っているか確認 (PGHOSTADDRなどはpsycopg2が自動で利用)
+    # 新しいチェック：必要な環境変数がすべて揃っているか確認
     required_vars = ['PGHOST', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGPORT']
     if not all(os.environ.get(v) for v in required_vars):
         print("致命的エラー: データベース接続に必要なPG_*変数が環境変数に設定されていません。")
-        # どの変数が不足しているかログ出力（デバッグ用）
         missing_vars = [v for v in required_vars if not os.environ.get(v)]
         print(f"不足している環境変数: {missing_vars}")
         return False
         
     try:
         # DB_URLの代わりに、個別の環境変数を使って接続
-        # PGHOSTADDR, PGSSLMODE, PGSSLROOTCERTは環境変数に設定されていればpsycopg2が自動で利用
         CONN = psycopg2.connect(
             host=os.environ.get('PGHOST'),
             user=os.environ.get('PGUSER'),
@@ -63,7 +62,11 @@ def initialize_database():
         CONN = None
         return False
 
-initialize_database()
+# 🚨 修正箇所: データベース接続に失敗した場合、プロセスを強制終了させる 🚨
+if not initialize_database():
+    # Gunicornの起動プロセスを中断し、Cloud Runに明確なエラーを報告する
+    print("FATAL: Database connection failed during startup. Exiting process with code 1.")
+    sys.exit(1)
 
 # データの記録関数 (以下、変更なし)
 def save_to_db(user_id, action_type):
@@ -158,7 +161,6 @@ def get_latest_log():
         return None
 
 
-
 def get_latest_log_by_type(action_type):
     """指定されたアクションタイプの最新ログを取得する"""
     if CONN is None:
@@ -167,6 +169,7 @@ def get_latest_log_by_type(action_type):
         cursor = CONN.cursor(cursor_factory=DictCursor)
         select_query = """
         SELECT timestamp, user_id, action_type
+        FROM pet_logs
         FROM pet_logs
         WHERE action_type = %s
         ORDER BY timestamp DESC
@@ -195,7 +198,6 @@ ACTION_MAP = {
     '排尿': 'おしっこ掃除',
     '水分補給': 'お水交換' 
 }
-
 
 
 @app.route("/callback", methods=['POST'])
@@ -336,14 +338,14 @@ def handle_message(event):
     elif "便" in user_text or "うんち" in user_text or "うんこ" in user_text or "うんち掃除" in user_text:
         record_success = save_to_db(user_id, '排便')
         if record_success:
-            response_text = f"トイレ掃除ありがとう！{user_name}\nおしっこも取ってくれたらそれも「おしっこ」で教えてにゃ\n臭くてごめんにゃ～"
+            response_text = f"トイレ掃除ありがとう！{user_name}\nおしっこも取ってくれたらそれも「おしっこ」で教えてにゃ\n臭くてごめんにゃん～"
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
     elif "尿" in user_text or "おしっこ" in user_text or "おしっこ掃除" in user_text:
         record_success = save_to_db(user_id, '排尿')
         if record_success:
-            response_text = f"トイレ掃除ありがとう！{user_name}\nうんちも取ってくれたらそれも「うんち」で教えてにゃ\n臭くてごめんにゃ～"
+            response_text = f"トイレ掃除ありがとう！{user_name}\nうんちも取ってくれたらそれも「うんち」で教えてにゃ\n臭くてごめんにゃん～"
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
