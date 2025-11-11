@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコード（main.pyなど）をすべてコピー
 COPY . .
 
-# 🚨 最終修正: Shellスクリプトを廃止し、Gunicorn実行ファイルを直接指定
+#Shellスクリプトを廃止し、Gunicorn実行ファイルを直接指定
 # Cloud Runの推奨する形式で、ポート8080を明示的にリッスンさせる
 # gunicornの実行パスを明示することで、exit code 127エラーを回避します。
 CMD ["/usr/local/bin/gunicorn", "main:app", "--bind", "0.0.0.0:8080", "--workers", "1"]
