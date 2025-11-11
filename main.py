@@ -394,7 +394,3 @@ def handle_message(event):
             TextSendMessage(text=response_text))
     except Exception as e:
         print(f"Failed to send reply message: {e}")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
