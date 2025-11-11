@@ -14,7 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコード（main.pyなど）をすべてコピー
 COPY . .
 
-# アプリケーションの実行コマンドを設定
-# Cloud Runは環境変数 $PORT を使用するため、それに対応する
-# Webサーバー（gunicorn）でmain.pyを実行します。
-CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 main:app
+# 最終的な起動コマンド: Cloud Runの仕様に完全に適合させる
+# 環境変数 $PORT をホスト0.0.0.0と正確に結合させる
+CMD gunicorn main:app --bind 0.0.0.0:$PORT --workers 1
