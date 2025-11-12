@@ -4,6 +4,11 @@ FROM python:3.11-slim
 # 作業ディレクトリをコンテナ内に設定
 WORKDIR /app
 
+# 依存関係ファイル（requirements.txt）をコピーする直前に追加
+
+# 🚨 キャッシュ無効化専用の引数を追加
+ARG CACHE_BREAKER
+
 # 依存関係ファイル（requirements.txt）をコピー
 COPY requirements.txt requirements.txt
 
