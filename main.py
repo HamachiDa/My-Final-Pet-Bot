@@ -334,14 +334,14 @@ def handle_message(event):
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
-    elif "便" in user_text or "うんち" in user_text or "うんこ" in user_text or "うんち掃除" in user_text:
+    elif "便" in user_text or "うんち" in user_text or "うんこ" in user_text or "うんち掃除" in user_text or "ウンチ" in user_text:
         record_success = save_to_db(user_id, '排便')
         if record_success:
             response_text = f"トイレ掃除ありがとう！{user_name}\nおしっこも取ってくれたらそれも「おしっこ」で教えてにゃ\n臭くてごめんにゃん～"
         else:
             response_text = "ごめん！記録に失敗したにゃ。RenderのログとDB接続を確認してね。"
 
-    elif "尿" in user_text or "おしっこ" in user_text or "おしっこ掃除" in user_text:
+    elif "尿" in user_text or "おしっこ" in user_text or "おしっこ掃除" in user_text or "オシッコ" in user_text:
         record_success = save_to_db(user_id, '排尿')
         if record_success:
             response_text = f"トイレ掃除ありがとう！{user_name}\nうんちも取ってくれたらそれも「うんち」で教えてにゃ\n臭くてごめんにゃん～"
